@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<title>Pinza</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f4f4f4}
+
+/* LOGIN */
+.login{
+  display:flex;
+  height:100vh;
+}
+.login-left{
+  width:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#fff;
+}
+.login-right{
+  width:50%;
+  background:linear-gradient(135deg,#7F00FF,#00C6FF);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:#fff;
+  font-size:48px;
+  animation:pulse 3s infinite;
+}
+@keyframes pulse{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.05)}
+  100%{transform:scale(1)}
+}
+.login-box{
+  width:320px;
+}
+.login-box button{
+  width:100%;
+  padding:14px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#4285F4;
+  color:#fff;
+}
+
+/* HEADER */
+header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 20px;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+header img{
+  width:40px;height:40px;border-radius:50%;
+}
+.add-box{margin-left:auto;display:flex;gap:6px}
+.add-box input[type=file]{display:none}
+.add-box label, .add-box button{
+  padding:6px 10px;
+  border-radius:6px;
+  background:#7F00FF;
+  color:#fff;
+  cursor:pointer;
+  border:none;
+}
+
+/* GRID */
+.grid{
+  column-count:4;
+  column-gap:15px;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  margin-bottom:15px;
+  border-radius:12px;
+  overflow:hidden;
+  break-inside:avoid;
+}
+.card img{width:100%}
+.card p{padding:10px;margin:0}
+.user{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px;
+}
+.user img{
+  width:30px;height:30px;border-radius:50%;
+}
+
+/* MODAL */
+.modal{
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.6);
+  justify-content:center;
+  align-items:center;
+}
+.modal-content{
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  max-width:400px;
+  width:90%;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.modal-content input, .modal-content select{
+  padding:8px;
+  font-size:16px;
+}
+.modal-content button{
+  padding:10px;
+  background:#7F00FF;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+.checkbox-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  max-height:100px;
+  overflow-y:auto;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="loginPage">
+  <div class="login-left">
+    <div class="login-box">
+      <h2>Pinza</h2>
+      <button onclick="googleLogin()">Google bilan kirish</button>
+    </div>
+  </div>
+  <div class="login-right">PINZA</div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+
+<header>
+  <img id="userAvatar">
+  <b id="userName"></b>
+
+  <div class="add-box">
+    <label for="file">📷</label>
+    <input type="file" id="file" accept="image/*">
+    <input id="text" placeholder="Ta'rif...">
+    <button onclick="openPinModal()">Add</button>
+  </div>
+</header>
+
+<div class="grid" id="grid"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="pinModal">
+  <div class="modal-content">
+    <h3>Yangi Pin qo'shish</h3>
+    <input type="file" id="modalFile" accept="image/*">
+    <input type="text" id="modalText" placeholder="Ta'rif...">
+    <button onclick="savePin()">Saqlash</button>
+  </div>
+</div>
+
+<div class="modal" id="profileModal">
+  <div class="modal-content">
+    <h3>Profil sozlamalari</h3>
+    <input type="text" id="firstName" placeholder="Ism">
+    <input type="text" id="lastName" placeholder="Familya">
+    <select id="gender">
+      <option value="">Jinsingizni tanlang</option>
+      <option value="erkak">Erkak</option>
+      <option value="ayol">Ayol</option>
+    </select>
+    <div class="checkbox-group" id="interests"></div>
+    <input type="file" id="profilePic" accept="image/*">
+    <button onclick="saveProfile()">Saqlash</button>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyADpw7n9Z-xyXgfopDQ7nB4fMWNlNrjoDA",
+  authDomain: "pinza-a2342.firebaseapp.com",
+  projectId: "pinza-a2342",
+  storageBucket: "pinza-a2342.appspot.com",
+  messagingSenderId: "174275817224",
+  appId: "1:174275817224:web:1dca6da172f239d971c6bd"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+/* GOOGLE LOGIN */
+function googleLogin(){
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+}
+
+/* AUTH STATE */
+auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById("loginPage").style.display="none";
+    document.getElementById("app").style.display="block";
+    // load profile
+    db.collection("profiles").doc(user.uid).get().then(doc=>{
+      if(doc.exists){
+        const p=doc.data();
+        document.getElementById("userName").innerText=p.firstName+" "+p.lastName;
+        document.getElementById("userAvatar").src=p.avatar||user.photoURL;
+      }else{
+        openProfileModal();
+      }
+    });
+  }else{
+    document.getElementById("loginPage").style.display="flex";
+    document.getElementById("app").style.display="none";
+  }
+});
+
+/* INTERESTS */
+const interestsArray=["Sport","Musica","San'at","Texnologiya","Kitob","Filmlar","Sayohat","Oziq-ovqat","Moda","Tibbiyot","O'yinlar","Dizayn","Fotografiya","Blog","Hayvonlar","Tarix","Fan","Psixologiya","Motivatsiya","Biznes","Avtomobil","Tabiat","Ilm-fan","Musiqa","Ovoz","Video"];
+const interestsDiv=document.getElementById("interests");
+interestsArray.forEach(i=>{
+  const cb=document.createElement("label");
+  cb.innerHTML=`<input type="checkbox" value="${i}"> ${i}`;
+  interestsDiv.appendChild(cb);
+});
+
+/* OPEN MODALS */
+function openPinModal(){document.getElementById("pinModal").style.display="flex";}
+function openProfileModal(){document.getElementById("profileModal").style.display="flex";}
+
+/* SAVE PROFILE */
+function saveProfile(){
+  const firstName=document.getElementById("firstName").value;
+  const lastName=document.getElementById("lastName").value;
+  const gender=document.getElementById("gender").value;
+  const interestElems=document.querySelectorAll("#interests input:checked");
+  const interests=[];
+  interestElems.forEach(i=>interests.push(i.value));
+  const file=document.getElementById("profilePic").files[0];
+  const uid=auth.currentUser.uid;
+
+  if(file){
+    const ref=storage.ref("profiles/"+uid);
+    ref.put(file).then(s=>s.ref.getDownloadURL().then(url=>{
+      saveProfileData(uid,firstName,lastName,gender,interests,url);
+    }));
+  }else{
+    saveProfileData(uid,firstName,lastName,gender,interests,auth.currentUser.photoURL);
+  }
+  document.getElementById("profileModal").style.display="none";
+}
+
+function saveProfileData(uid,firstName,lastName,gender,interests,avatar){
+  db.collection("profiles").doc(uid).set({
+    firstName,lastName,gender,interests,avatar
+  });
+  document.getElementById("userName").innerText=firstName+" "+lastName;
+  document.getElementById("userAvatar").src=avatar;
+}
+
+/* ADD PIN */
+function savePin(){
+  const file=document.getElementById("modalFile").files[0];
+  const text=document.getElementById("modalText").value;
+  if(!file)return;
+
+  const ref=storage.ref("pins/"+Date.now());
+  ref.put(file).then(s=>s.ref.getDownloadURL().then(url=>{
+    db.collection("pins").add({
+      img:url,
+      text:text,
+      name:document.getElementById("userName").innerText,
+      avatar:document.getElementById("userAvatar").src,
+      time:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById("pinModal").style.display="none";
+  }));
+}
+
+/* LOAD PINS */
+db.collection("pins").orderBy("time","desc").onSnapshot(snap=>{
+  const g=document.getElementById("grid");
+  g.innerHTML="";
+  snap.forEach(d=>{
+    const p=d.data();
+    g.innerHTML+=`
+      <div class="card">
+        <div class="user">
+          <img src="${p.avatar}">
+          <b>${p.name}</b>
+        </div>
+        <img src="${p.img}">
+        <p>${p.text}</p>
+      </div>
+    `;
+  });
+});
+</script>
+
+</body>
+</html>
